@@ -4,14 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Amazon Scraper</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
   <div class="container">
     <h1>Amazon Scraper</h1>
-    <input type="text" id="keyword" placeholder="Enter search keyword" />
-    <button id="scrapeBtn">Search</button>
-    <div id="results"></div>
+
+    <div class="search-bar">
+      <input type="text" id="keyword" placeholder="Enter search keyword" />
+      <button id="scrapeBtn">Search</button>
+    </div>
+
+    <div id="results">
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
