@@ -1,10 +1,12 @@
 import fs from "fs";
 import express from 'express';
 import axios from 'axios';
+import cors from 'cors'
 import { JSDOM } from 'jsdom';
 
 const app = express();
 const PORT = 8080;
+app.use(cors());
 
 app.get('/api/scrape', async (req, res) => {
   const keyword = req.query.keyword;
@@ -48,6 +50,7 @@ app.get('/api/scrape', async (req, res) => {
       message: `You searched the keyword: ${keyword}`,
       results: products
     });
+    
     //console.log(dom.window.document.querySelectorAll(".s-result-item").length);
   } catch (error) {
     console.error(error.message);
