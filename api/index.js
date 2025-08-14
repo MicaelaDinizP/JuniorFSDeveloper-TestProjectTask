@@ -1,26 +1,30 @@
-import fs from "fs";
 import express from "express";
 import axios from "axios";
 import cors from "cors";
 import { JSDOM } from "jsdom";
+import sanitizeHtml from "sanitize-html";
 
 const PORT = 8080;
 const AMAZON_BASE_URL = "https://www.amazon.com.br/s?k=";
 const REQUEST_TIMEOUT = 5000;
+const MAX_KEYWORD_LENGTH = 100;
 
 const app = express();
 app.use(cors());
 
 app.get("/api/scrape", async (req, res) => {
-  const keyword = (req.query.keyword || "").trim();
-  if (!keyword) {
-    return res.status(400).json({ error: "Keyword is required" });
-  }
+  const keyword = sanitizeText(req.query.keyword || "");
+  const error = validateKeyword(keyword);
+  if (error) return res.status(400).json({ error });
 
   try {
     const html = await fetchAmazonPage(keyword);
     const products = parseAmazonHTML(html);
-    res.json({ message: `You searched for: ${keyword}`, results: products });
+
+    res.json({
+      message: `You searched for: ${keyword}`,
+      results: products,
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Failed to fetch Amazon page" });
@@ -33,13 +37,13 @@ async function fetchAmazonPage(keyword) {
 
   const response = await axios.get(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
       "Accept-Language": "en-US,en;q=0.9",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     },
     timeout: REQUEST_TIMEOUT,
   });
 
-  fs.writeFileSync("amazon.html", response.data);
   return response.data;
 }
 
@@ -49,7 +53,7 @@ function parseAmazonHTML(html) {
   const products = [];
 
   document.querySelectorAll('[data-component-type="s-search-result"]').forEach((element) => {
-    const title = element.querySelector("h2.a-size-base-plus span")?.textContent?.trim() || "";
+    const title = sanitizeText(element.querySelector("h2.a-size-base-plus span")?.textContent || "");
     const rating = extractRating(element);
     const reviews = extractReviews(element);
     const image = element.querySelector("img.s-image")?.src || null;
@@ -80,8 +84,19 @@ function extractReviews(element) {
     element.querySelector('[data-cy="reviews-block"] span.a-size-base.s-underline-text') ||
     element.querySelector("a.s-underline-text, a.s-underline-link-text, span.s-link-style");
 
-  const reviewsText = reviewsElement?.textContent?.trim() || "0";
+  const reviewsText = reviewsElement?.textContent.trim() || "0";
   return parseInt(reviewsText.replace(/\D/g, ""), 10) || 0;
+}
+
+function validateKeyword(keyword) {
+  if (!keyword || keyword.trim() === "") return "Keyword is required";
+  if (keyword.length > MAX_KEYWORD_LENGTH) return "Keyword is too long";
+  if (!/^[\p{L}\p{N}\s\-\.]+$/u.test(keyword)) return "Keyword contains invalid characters";
+  return null;
+}
+
+function sanitizeText(text) {
+  return sanitizeHtml(text || "", { allowedTags: [], allowedAttributes: {} }).trim();
 }
 
 app.listen(PORT, () => {
